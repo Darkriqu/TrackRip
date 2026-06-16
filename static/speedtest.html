@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrackRip — Спидтест</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        body { font-family: var(--font); }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 14px;
+            padding: 18px;
+        }
+        .metric {
+            padding: 14px;
+            border-radius: var(--radius);
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+        .metric::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border-glow), transparent);
+        }
+        .metric-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 6px;
+        }
+        .metric-value {
+            font-size: 28px;
+            font-weight: 400;
+            font-family: var(--font);
+            color: var(--neon);
+            text-shadow: 0 0 10px var(--neon-glow);
+        }
+        .metric-unit {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-left: 3px;
+        }
+        .chart-wrap {
+            padding: 18px;
+            border-bottom: 1px solid var(--border);
+        }
+        .chart-wrap h3 {
+            font-size: 11px;
+            font-weight: 400;
+            margin-bottom: 12px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        canvas {
+            width: 100%;
+            height: 140px;
+            display: block;
+        }
+        .recent-list {
+            max-height: 320px;
+            overflow-y: auto;
+        }
+        .recent-item {
+            display: flex;
+            padding: 7px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 11px;
+            font-family: var(--font);
+            gap: 14px;
+            transition: background 0.15s;
+        }
+        .recent-item:hover {
+            background: rgba(0, 255, 136, 0.02);
+        }
+        .recent-item:last-child { border-bottom: none; }
+        .recent-track { flex: 1; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .recent-source { color: var(--text-dim); min-width: 100px; letter-spacing: 0.5px; }
+        .recent-size { color: var(--text-dim); min-width: 60px; text-align: right; }
+        .recent-speed { color: var(--neon); min-width: 80px; text-align: right; text-shadow: 0 0 5px var(--neon-glow); }
+        .recent-time { color: var(--text-muted); min-width: 50px; text-align: right; }
+
+        .speed-chart { opacity: 0; transform: translateY(10px); }
+        .recent-panel { opacity: 0; transform: translateY(10px); }
+    </style>
+</head>
+<body>
+    <div class="scanline"></div>
+    <div class="app">
+        <header class="header">
+            <div class="header-left">
+                <a href="/" style="text-decoration:none"><h1 class="logo">Track<span>Rip</span></h1></a>
+                <span class="tag">спидтест</span>
+            </div>
+            <div class="header-right">
+                <a href="/" class="link-btn">назад</a>
+            </div>
+        </header>
+
+        <main class="main">
+            <section class="panel metrics-panel">
+                <div class="metrics" id="metrics">
+                    <div class="metric">
+                        <div class="metric-label">Текущая скорость</div>
+                        <div class="metric-value" id="m-current">0<span class="metric-unit">MB/s</span></div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Мгновенная</div>
+                        <div class="metric-value" id="m-instant">0<span class="metric-unit">MB/s</span></div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Средняя</div>
+                        <div class="metric-value" id="m-avg">0<span class="metric-unit">MB/s</span></div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">ETA</div>
+                        <div class="metric-value" id="m-eta">--<span class="metric-unit"></span></div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Файлов</div>
+                        <div class="metric-value" id="m-files">0<span class="metric-unit"></span></div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Размер</div>
+                        <div class="metric-value" id="m-size">0<span class="metric-unit">GB</span></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel speed-chart">
+                <div class="chart-wrap">
+                    <h3>Скорость загрузки (последние 30 треков)</h3>
+                    <canvas id="chart-speed" width="900" height="140"></canvas>
+                </div>
+            </section>
+
+            <section class="panel recent-panel">
+                <div class="panel-header">
+                    <h2>Последние загрузки</h2>
+                </div>
+                <div class="recent-list" id="recent-list">
+                    <div class="queue-empty">Ожидание данных...</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script>
+    (function () {
+        var canvas = document.getElementById('chart-speed');
+        var ctx = canvas.getContext('2d');
+
+        // GSAP entrance
+        gsap.set('.header', { opacity: 0, y: -20 });
+        gsap.to('.header', { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' });
+
+        gsap.to('.panel', {
+            opacity: 1,
+            y: 0,
+            duration: 0.5,
+            stagger: 0.12,
+            ease: 'power2.out',
+            delay: 0.15
+        });
+
+        gsap.from('.metric', {
+            opacity: 0,
+            y: 15,
+            scale: 0.95,
+            duration: 0.4,
+            stagger: 0.08,
+            delay: 0.3,
+            ease: 'back.out(1.5)'
+        });
+
+        gsap.from('.logo span', {
+            opacity: 0,
+            scale: 0.8,
+            duration: 0.8,
+            delay: 0.2,
+            ease: 'back.out(1.7)'
+        });
+
+        function formatEta(sec) {
+            if (sec <= 0) return '--';
+            if (sec < 60) return Math.round(sec) + 'с';
+            if (sec < 3600) return Math.round(sec / 60) + 'м ' + Math.round(sec % 60) + 'с';
+            return Math.round(sec / 3600) + 'ч ' + Math.round((sec % 3600) / 60) + 'м';
+        }
+
+        function animateMetric(id, html) {
+            var el = document.getElementById(id);
+            if (el.innerHTML !== html) {
+                gsap.fromTo(el,
+                    { y: -3, opacity: 0.5 },
+                    { y: 0, opacity: 1, duration: 0.25, ease: 'power2.out',
+                      onStart: function () { el.innerHTML = html; }
+                    }
+                );
+            }
+        }
+
+        function drawChart(data) {
+            var dpr = window.devicePixelRatio || 1;
+            var w = canvas.clientWidth;
+            var h = canvas.clientHeight;
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            ctx.scale(dpr, dpr);
+            ctx.clearRect(0, 0, w, h);
+
+            if (!data.length) {
+                ctx.fillStyle = '#3a3a4a';
+                ctx.font = '12px "Share Tech Mono", monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('Ожидание данных...', w / 2, h / 2 + 5);
+                return;
+            }
+
+            var speeds = data.map(function (d) { return d.speed_mbps; });
+            var maxSpeed = Math.max.apply(null, speeds) || 1;
+            maxSpeed *= 1.15;
+
+            var pad = { top: 10, bottom: 22, left: 0, right: 0 };
+            var cw = w - pad.left - pad.right;
+            var ch = h - pad.top - pad.bottom;
+            var step = cw / Math.max(speeds.length - 1, 1);
+
+            // Grid
+            ctx.strokeStyle = '#1a1a2e';
+            ctx.lineWidth = 1;
+            for (var g = 0; g < 4; g++) {
+                var gy = pad.top + ch * g / 3;
+                ctx.beginPath();
+                ctx.moveTo(pad.left, gy);
+                ctx.lineTo(w - pad.right, gy);
+                ctx.stroke();
+            }
+
+            // Area
+            ctx.beginPath();
+            ctx.moveTo(pad.left, pad.top + ch);
+            for (var i = 0; i < speeds.length; i++) {
+                var x = pad.left + i * step;
+                var y = pad.top + ch - (speeds[i] / maxSpeed) * ch;
+                ctx.lineTo(x, y);
+            }
+            ctx.lineTo(pad.left + (speeds.length - 1) * step, pad.top + ch);
+            ctx.closePath();
+            var grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + ch);
+            grad.addColorStop(0, 'rgba(0, 255, 136, 0.25)');
+            grad.addColorStop(1, 'rgba(0, 255, 136, 0.02)');
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            // Line
+            ctx.beginPath();
+            for (var j = 0; j < speeds.length; j++) {
+                var lx = pad.left + j * step;
+                var ly = pad.top + ch - (speeds[j] / maxSpeed) * ch;
+                if (j === 0) ctx.moveTo(lx, ly);
+                else ctx.lineTo(lx, ly);
+            }
+            ctx.strokeStyle = '#00ff88';
+            ctx.lineWidth = 2;
+            ctx.lineJoin = 'round';
+            ctx.shadowColor = 'rgba(0, 255, 136, 0.5)';
+            ctx.shadowBlur = 6;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // Dots
+            for (var k = 0; k < speeds.length; k++) {
+                var dx = pad.left + k * step;
+                var dy = pad.top + ch - (speeds[k] / maxSpeed) * ch;
+                ctx.beginPath();
+                ctx.arc(dx, dy, 3, 0, Math.PI * 2);
+                ctx.fillStyle = '#00ff88';
+                ctx.shadowColor = 'rgba(0, 255, 136, 0.6)';
+                ctx.shadowBlur = 5;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            // Labels
+            ctx.fillStyle = '#3a3a4a';
+            ctx.font = '10px "Share Tech Mono", monospace';
+            ctx.textAlign = 'right';
+            for (var m = 0; m < 4; m++) {
+                var val = maxSpeed * (3 - m) / 3;
+                ctx.fillText(val.toFixed(1), w - 4, pad.top + ch * m / 3 + 4);
+            }
+        }
+
+        function renderRecent(items) {
+            var el = document.getElementById('recent-list');
+            if (!items || !items.length) {
+                el.innerHTML = '<div class="queue-empty">Нет данных</div>';
+                return;
+            }
+            var html = '';
+            for (var i = items.length - 1; i >= 0; i--) {
+                var r = items[i];
+                html += '<div class="recent-item">' +
+                    '<span class="recent-track">' + esc(r.track) + '</span>' +
+                    '<span class="recent-source">' + esc(r.source) + '</span>' +
+                    '<span class="recent-size">' + r.size_mb + ' MB</span>' +
+                    '<span class="recent-speed">' + r.speed_mbps + ' MB/s</span>' +
+                    '<span class="recent-time">' + r.duration + 's</span>' +
+                    '</div>';
+            }
+            el.innerHTML = html;
+        }
+
+        function esc(s) {
+            var d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+
+        function poll() {
+            fetch('/api/speedtest').then(function (r) { return r.json(); }).then(function (data) {
+                var sp = data.speed || {};
+                var tm = data.timing || {};
+                var dk = data.disk || {};
+
+                animateMetric('m-current', (sp.current_mbps || 0) + '<span class="metric-unit">MB/s</span>');
+                animateMetric('m-instant', (sp.instant_bps / 1024 / 1024 || 0).toFixed(1) + '<span class="metric-unit">MB/s</span>');
+                animateMetric('m-avg', (sp.avg_mbps || 0) + '<span class="metric-unit">MB/s</span>');
+                animateMetric('m-eta', formatEta(tm.eta_seconds || 0));
+                animateMetric('m-files', (dk.files || 0) + '');
+                animateMetric('m-size', (dk.size_gb || 0) + '<span class="metric-unit">GB</span>');
+
+                drawChart(data.recent || []);
+                renderRecent(data.recent || []);
+            });
+        }
+
+        poll();
+        setInterval(poll, 2000);
+    })();
+    </script>
+</body>
+</html>

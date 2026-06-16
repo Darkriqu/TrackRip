@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrackRip</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <canvas id="bg-canvas"></canvas>
+    <div class="scanline"></div>
+    <div class="vignette"></div>
+    <div class="grid-overlay"></div>
+    <div class="app">
+        <header class="header">
+            <div class="header-left">
+                <h1 class="logo glitch" data-text="TRACKRIP">TRACK<span>RIP</span></h1>
+                <span class="tag" id="status-tag">остановлен</span>
+            </div>
+            <div class="header-right">
+                <span class="stat-pill" id="stat-downloaded">0 скачано</span>
+                <span class="stat-pill" id="stat-failed">0 ошибок</span>
+                <a href="/speedtest" class="link-btn">спидтест</a>
+            </div>
+        </header>
+
+        <main class="main">
+            <section class="panel input-panel">
+                <div class="panel-glow"></div>
+                <div class="panel-header">
+                    <h2>Добавление треков</h2>
+                    <div class="panel-actions">
+                        <button class="btn btn-sm" id="btn-import-file">загрузить файл</button>
+                        <input type="file" id="file-input" accept=".txt" hidden>
+                    </div>
+                </div>
+                <textarea id="track-input" placeholder="Каждая строка — исполнитель - название&#10;Pink Floyd - Comfortably Numb&#10;Queen - Bohemian Rhapsody" rows="6"></textarea>
+                <div class="input-footer">
+                    <span class="hint" id="input-count">0 строк</span>
+                    <button class="btn btn-primary" id="btn-add">Добавить</button>
+                </div>
+            </section>
+
+            <section class="panel controls-panel">
+                <div class="panel-glow"></div>
+                <div class="controls-row">
+                    <button class="btn btn-play" id="btn-start" title="Старт">&#9654; Старт</button>
+                    <button class="btn" id="btn-pause" title="Пауза" disabled>&#10074;&#10074; Пауза</button>
+                    <button class="btn" id="btn-stop" title="Стоп" disabled>&#9632; Стоп</button>
+                    <div class="controls-sep"></div>
+                    <button class="btn btn-sm" id="btn-retry">повторить ошибки</button>
+                    <button class="btn btn-sm" id="btn-clear-done">убрать готовые</button>
+                    <button class="btn btn-sm btn-danger" id="btn-clear-all">очистить всё</button>
+                </div>
+                <div class="progress-bar-wrap" id="progress-bar-wrap" style="display:none">
+                    <div class="progress-bar" id="progress-bar"></div>
+                    <span class="progress-text" id="progress-text"></span>
+                </div>
+            </section>
+
+            <section class="panel settings-panel">
+                <div class="panel-glow"></div>
+                <div class="settings-row">
+                    <label class="settings-label">Папка загрузок:</label>
+                    <input type="text" id="download-dir" class="input-text" placeholder="~/Downloads/Music">
+                    <button class="btn btn-sm" id="btn-set-dir">сохранить</button>
+                </div>
+                <div class="settings-row">
+                    <label class="settings-label">Воркеры:</label>
+                    <input type="range" id="workers-slider" min="2" max="10" value="10">
+                    <span class="workers-val" id="workers-val">10</span>
+                </div>
+                <div class="settings-row">
+                    <label class="settings-label">Soulseek:</label>
+                    <span class="tag tag-sm" id="slsk-status">проверка...</span>
+                </div>
+            </section>
+
+            <section class="panel queue-panel">
+                <div class="panel-glow"></div>
+                <div class="panel-header">
+                    <h2>Очередь</h2>
+                    <div class="queue-filters">
+                        <button class="filter-btn active" data-filter="">все</button>
+                        <button class="filter-btn" data-filter="pending">ожидают</button>
+                        <button class="filter-btn" data-filter="downloading">загружаются</button>
+                        <button class="filter-btn" data-filter="done">готовые</button>
+                        <button class="filter-btn" data-filter="failed">ошибки</button>
+                    </div>
+                </div>
+                <div class="queue-stats" id="queue-stats"></div>
+                <div class="queue-list" id="queue-list">
+                    <div class="queue-empty">Очередь пуста</div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <span class="footer-line"></span>
+            <span class="footer-text">TRACKRIP v1.0 // LOCAL NETWORK</span>
+            <span class="footer-line"></span>
+        </footer>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="background.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

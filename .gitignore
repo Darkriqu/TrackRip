@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+.config.json
+.panel_state.json
+slskd/
+slskd.yml
+Песни.txt
+*.bak
+ffmpeg/
+ffmpeg.zip
+ffmpeg_tmp/
