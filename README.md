@@ -1,0 +1,171 @@
+# TrackRip
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/Flask-Backend-black?logo=flask" alt="Flask">
+  <img src="https://img.shields.io/badge/yt--dlp-Downloader-red?logo=youtube" alt="yt-dlp">
+  <img src="https://img.shields.io/badge/Soulseek-slskd-green" alt="Soulseek">
+  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightgrey" alt="Platform">
+  <img src="https://img.shields.io/badge/License-Private-orange" alt="License">
+</p>
+<p align="center">
+  <img src="https://eblo.id/uploads/RW4Do3K/image.opt.webp">
+</p>
+
+<p align="center">
+  <b>Веб-панель для массовой загрузки музыки с YouTube Music, YouTube, SoundCloud и Soulseek.</b><br>
+  Автоматический поиск, параллельная загрузка, встроенный спидтест, импорт плейлистов.
+</p>
+
+---
+
+## Что умеет
+
+- Поиск по YouTube Music, YouTube, SoundCloud
+- Параллельная загрузка из всех источников, автоматический выбор лучшего
+- Загрузка с Soulseek (FLAC, lossless) через slskd
+- Адаптивное количество воркеров (2--10), подстраивается под скорость канала
+- Импорт плейлистов из текстового файла
+- Выбор папки загрузок из интерфейса
+- Мониторинг скорости в реальном времени (спидтест)
+- Управление очередью: старт, пауза, стоп, повтор ошибок, очистка
+
+---
+
+## Быстрый старт
+
+### Windows
+
+1. Установить [Python 3.10+](https://www.python.org/downloads/) (отметить "Add Python to PATH")
+2. Скопировать проект в любую папку
+3. Запустить `run.bat`
+4. Открыть http://localhost:8844
+
+При первом запуске автоматически создаётся виртуальное окружение и
+устанавливаются зависимости.
+
+### Linux
+
+```bash
+cd TrackRip
+python3 -m venv venv
+source venv/bin/activate
+pip install flask yt-dlp
+python server.py
+```
+
+---
+
+## Использование
+
+### Формат ввода
+
+Каждая строка -- один трек в формате:
+
+```
+Исполнитель - Название
+```
+
+Пример:
+
+```
+Pink Floyd - Comfortably Numb
+Queen - Bohemian Rhapsody
+Led Zeppelin - Stairway to Heaven
+```
+
+### Добавление треков
+
+1. Ввести список в текстовое поле на главной странице
+2. Нажать "Добавить"
+3. Нажать "Старт" для запуска загрузки
+
+### Импорт из файла
+
+Загрузить текстовый файл через кнопку "Загрузить файл" -- формат тот же,
+одна строка на трек.
+
+Также можно использовать сайт [ymusicexport.ru](https://ymusicexport.ru/)
+для экспорта плейлиста из Яндекс Музыки:
+
+1. Открыть плейлист в Яндекс Музыке (ПК-версия)
+2. Снять приватность (три точки -- Приватный плейлист выкл)
+3. Скопировать ссылку и вставить в ymusicexport
+4. Полученный список вставить в текстовое поле или сохранить в .txt
+
+### Папка загрузок
+
+По умолчанию файлы сохраняются в `~/Downloads/Music`.
+Папку можно изменить прямо в интерфейсе -- настройки сохраняются
+между перезапусками.
+
+---
+
+## Настройка
+
+Скопировать `config.example.json` в `.config.json`:
+
+```json
+{
+  "download_dir": "~/Downloads/Music"
+}
+```
+
+### Soulseek
+
+Для загрузки с Soulseek нужен [slskd](https://github.com/slskd/slskd),
+запущенный на `localhost:5030`.
+
+`run.bat` запустит slskd автоматически, если он есть в папке `slskd/`.
+Отредактируйте `slskd.yml` -- укажите логин и пароль:
+
+```yaml
+soulseek:
+  username: ваш_логин
+  password: ваш_пароль
+```
+
+Без slskd панель работает через YouTube Music, YouTube и SoundCloud.
+
+---
+
+## Структура проекта
+
+```
+TrackRip/
+  server.py              Точка входа
+  setup_ffmpeg.py        Скачивание ffmpeg (Windows)
+  tracker/
+    config.py            Конфигурация
+    state.py             Состояние приложения
+    soulseek.py          API Soulseek
+    downloader.py        Воркеры загрузки
+    api.py               HTTP API
+  static/
+    index.html           Интерфейс
+    style.css            Стили
+    app.js               Клиентская логика
+    speedtest.html       Страница спидтеста
+  requirements.txt       Зависимости Python
+  run.bat                Запуск (Windows)
+  config.example.json    Пример конфигурации
+  slskd.yml              Конфиг Soulseek (создаётся автоматически)
+  .config.json           Сохранённые настройки (создаётся автоматически)
+```
+
+---
+
+## Требования
+
+| Компонент | Версия |
+|-----------|--------|
+| Python    | 3.10+  |
+| yt-dlp    | последняя |
+| Flask     | последняя |
+| slskd     | 0.24.5+ (опционально) |
+| ОС        | Windows 10/11, Linux |
+
+---
+
+## Лицензия
+
+Private
